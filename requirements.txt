@@ -1,0 +1,5 @@
+keyboard
+pyautogui
+pystray
+Pillow
+PySide6
