@@ -14,10 +14,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QObject, Signal, QSize
 from PySide6.QtGui import QIcon, QPixmap
 
+# Configurações de Caminhos
 APPDATA_PATH = os.path.join(os.getenv('LOCALAPPDATA'), 'OW_Smurfer')
 CONFIG_FILE = os.path.join(APPDATA_PATH, 'config.json')
-
-# Caminho do ícone requerido pelo layout
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOGO_PATH = os.path.join(BASE_DIR, 'img', 'OW_Smurfer_logo.png')
 
@@ -37,7 +36,6 @@ def carregar_config():
             data = json.load(f)
     except:
         return DEFAULT_CONFIG.copy()
-
     for k, v in DEFAULT_CONFIG.items():
         data.setdefault(k, v)
     return data
@@ -52,23 +50,18 @@ def center(widget):
     geo.moveCenter(screen.center())
     widget.move(geo.topLeft())
 
-
 class HotkeyBridge(QObject):
     triggered = Signal()
 
-
 # ==============================================================================
-# CLASSES DE COMPONENTES VISUAIS E ESTILOS
+# CLASSES DE BASE CORRIGIDAS (SEM CONFLITO DE HERANÇA)
 # ==============================================================================
 
-class FramelessDraggable(QWidget):
-    """Classe base para permitir arrastar janelas sem borda"""
+class DraggableWindow(QWidget):
+    """Base para janelas principais e overlay"""
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Se for Dialog usar flags adequadas
-        flags = Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
-        if isinstance(self, QDialog): flags |= Qt.Dialog
-        self.setWindowFlags(flags)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self._drag_pos = None
 
@@ -84,37 +77,56 @@ class FramelessDraggable(QWidget):
 
     def mouseReleaseEvent(self, event):
         self._drag_pos = None
-        event.accept()
 
+class DraggableDialog(QDialog):
+    """Base para diálogos modais (Add/Edit)"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Dialog)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self._drag_pos = None
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if self._drag_pos is not None and event.buttons() == Qt.LeftButton:
+            self.move(event.globalPosition().toPoint() - self._drag_pos)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self._drag_pos = None
+
+# ==============================================================================
+# COMPONENTES VISUAIS
+# ==============================================================================
 
 class HeaderWidget(QWidget):
-    """Componente de cabeçalho padronizado do App"""
     def __init__(self, title, subtitle, show_close=True, parent=None):
         super().__init__(parent)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(10)
-
-        # Círculo Laranja / Imagem
+        
+        # Ícone/Círculo Laranja
         self.logo = QLabel()
         self.logo.setFixedSize(32, 32)
-        pixmap = QPixmap(LOGO_PATH)
-        if not pixmap.isNull():
-            self.logo.setPixmap(pixmap.scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        pix = QPixmap(LOGO_PATH)
+        if not pix.isNull():
+            self.logo.setPixmap(pix.scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         else:
             self.logo.setStyleSheet("background-color: #da8826; border-radius: 16px;")
 
         t_layout = QVBoxLayout()
         t_layout.setSpacing(0)
-        t_layout.setAlignment(Qt.AlignVCenter)
-        
         lbl_title = QLabel(title)
-        lbl_title.setStyleSheet("color: #da8826; font-size: 14px; font-weight: bold; font-family: 'Segoe UI', Arial;")
+        lbl_title.setStyleSheet("color: #da8826; font-size: 14px; font-weight: bold;")
         lbl_sub = QLabel(subtitle)
-        lbl_sub.setStyleSheet("color: #ffffff; font-size: 10px; font-family: 'Segoe UI', Arial; letter-spacing: 1px;")
+        lbl_sub.setStyleSheet("color: #ffffff; font-size: 10px; letter-spacing: 1px;")
         
-        if title: t_layout.addWidget(lbl_title)
-        if subtitle: t_layout.addWidget(lbl_sub)
+        t_layout.addWidget(lbl_title)
+        t_layout.addWidget(lbl_sub)
         
         layout.addWidget(self.logo)
         layout.addLayout(t_layout)
@@ -123,356 +135,228 @@ class HeaderWidget(QWidget):
         if show_close:
             self.btn_close = QPushButton()
             self.btn_close.setFixedSize(16, 16)
-            self.btn_close.setStyleSheet("QPushButton { background-color: #c7302b; border-radius: 8px; border: none; } QPushButton:hover { background-color: #ff4c4c; }")
+            self.btn_close.setCursor(Qt.PointingHandCursor)
+            self.btn_close.setStyleSheet("background-color: #c7302b; border-radius: 8px; border: none;")
+            # Correção com lambda para fechar a janela pai corretamente
             self.btn_close.clicked.connect(lambda: self.window().close())
             layout.addWidget(self.btn_close, alignment=Qt.AlignTop)
 
-
 class AccountItemWidget(QWidget):
-    """Widget customizado para a lista de contas na Main Window"""
     def __init__(self, bnet, email, parent=None):
         super().__init__(parent)
-        self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(10, 15, 10, 15)
-        self.layout.setSpacing(3)
-        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 12, 10, 12)
         self.lbl_bnet = QLabel(bnet)
         self.lbl_bnet.setAlignment(Qt.AlignCenter)
         self.lbl_details = QLabel(f"{email} | {'*' * 8}")
         self.lbl_details.setAlignment(Qt.AlignCenter)
-        
-        self.layout.addWidget(self.lbl_bnet)
-        self.layout.addWidget(self.lbl_details)
-        self.set_normal_style()
+        layout.addWidget(self.lbl_bnet)
+        layout.addWidget(self.lbl_details)
+        self.set_style(False)
 
-    def set_normal_style(self):
-        self.lbl_bnet.setStyleSheet("color: #da8826; font-size: 13px; font-family: 'Segoe UI', Arial;")
-        self.lbl_details.setStyleSheet("color: #888888; font-size: 12px; font-family: 'Segoe UI', Arial;")
-
-    def set_selected_style(self):
-        self.lbl_bnet.setStyleSheet("color: #ffffff; font-size: 13px; font-weight: bold; font-family: 'Segoe UI', Arial;")
-        self.lbl_details.setStyleSheet("color: #ffffff; font-size: 12px; font-family: 'Segoe UI', Arial;")
-
+    def set_style(self, selected):
+        if selected:
+            self.lbl_bnet.setStyleSheet("color: #ffffff; font-weight: bold; font-size: 13px;")
+            self.lbl_details.setStyleSheet("color: #ffffff; font-size: 11px;")
+        else:
+            self.lbl_bnet.setStyleSheet("color: #da8826; font-size: 13px;")
+            self.lbl_details.setStyleSheet("color: #888888; font-size: 11px;")
 
 class ModeToggle(QWidget):
-    """Widget clicável para trocar os modos de entrada visualmente"""
     toggled = Signal(str)
-    
-    def __init__(self, current_mode):
+    def __init__(self, current):
         super().__init__()
         layout = QHBoxLayout(self)
         layout.setAlignment(Qt.AlignCenter)
-        layout.setContentsMargins(0, 10, 0, 0)
-        
-        lbl = QLabel("MODE:")
-        lbl.setStyleSheet("color: white; font-size: 10px; font-weight: bold; letter-spacing: 1px;")
-        
         self.btn_enter = QPushButton("ENTER")
         self.btn_tab = QPushButton("TAB")
-        
         for b in (self.btn_enter, self.btn_tab):
-            b.setCursor(Qt.PointingHandCursor)
             b.setFlat(True)
+            b.setCursor(Qt.PointingHandCursor)
             b.clicked.connect(self.on_click)
-            
-        self.sep = QLabel("|")
-        self.sep.setStyleSheet("color: #555;")
-        
-        layout.addWidget(lbl)
+        layout.addWidget(QLabel("MODE:"))
         layout.addWidget(self.btn_enter)
-        layout.addWidget(self.sep)
         layout.addWidget(self.btn_tab)
-        
-        self.update_ui(current_mode)
-        
+        self.update_ui(current)
+
     def on_click(self):
-        mode = "enter" if self.sender() == self.btn_enter else "tab"
-        self.update_ui(mode)
-        self.toggled.emit(mode)
-        
-    def update_ui(self, mode):
-        active_qss = "color: #da8826; font-size: 10px; font-weight: bold; background: transparent; border: none; letter-spacing: 1px;"
-        inactive_qss = "color: #555555; font-size: 10px; font-weight: bold; background: transparent; border: none; letter-spacing: 1px;"
-        
-        self.btn_enter.setStyleSheet(active_qss if mode == "enter" else inactive_qss)
-        self.btn_tab.setStyleSheet(active_qss if mode == "tab" else inactive_qss)
+        m = "enter" if self.sender() == self.btn_enter else "tab"
+        self.update_ui(m)
+        self.toggled.emit(m)
+
+    def update_ui(self, m):
+        active = "color: #da8826; font-weight: bold; font-size: 10px; border: none;"
+        inactive = "color: #555555; font-size: 10px; border: none;"
+        self.btn_enter.setStyleSheet(active if m == "enter" else inactive)
+        self.btn_tab.setStyleSheet(active if m == "tab" else inactive)
 
 # ==============================================================================
-# JANELAS (MAIN, MODAL, ACTION)
+# JANELAS E DIÁLOGOS
 # ==============================================================================
 
-class CustomInputDialog(FramelessDraggable, QDialog):
-    """Modal Customizado fiel ao Layout"""
-    def __init__(self, parent, label, password=False, default=""):
+class CustomInputDialog(DraggableDialog):
+    def __init__(self, parent, title, label, password=False, default=""):
         super().__init__(parent)
-        self.setFixedSize(380, 140)
+        self.setFixedSize(380, 150)
         self.result = None
         
-        self.frame = QFrame(self)
-        self.frame.resize(self.size())
-        self.frame.setStyleSheet("QFrame#BaseFrame { background-color: #242426; border-radius: 20px; border: 1px solid #333; }")
-        self.frame.setObjectName("BaseFrame")
+        frame = QFrame(self)
+        frame.resize(self.size())
+        frame.setStyleSheet("background-color: #242426; border-radius: 20px; border: 1px solid #333;")
         
-        layout = QVBoxLayout(self.frame)
-        layout.setContentsMargins(25, 20, 25, 20)
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(20, 15, 20, 15)
         
         header = QHBoxLayout()
-        lbl_title = QLabel(f"ENTER YOUR {label.upper()}")
-        lbl_title.setStyleSheet("color: #ffffff; font-size: 11px; font-weight: bold; font-family: 'Segoe UI', Arial; letter-spacing: 2px;")
-        
+        lbl_head = QLabel(title.upper())
+        lbl_head.setStyleSheet("color: white; font-weight: bold; font-size: 11px; letter-spacing: 1px; border: none;")
         btn_close = QPushButton()
-        btn_close.setFixedSize(16, 16)
-        btn_close.setStyleSheet("QPushButton { background-color: #c7302b; border-radius: 8px; border: none; } QPushButton:hover { background-color: #ff4c4c; }")
+        btn_close.setFixedSize(14, 14)
+        btn_close.setStyleSheet("background-color: #c7302b; border-radius: 7px; border: none;")
         btn_close.clicked.connect(self.reject)
-        
-        header.addWidget(lbl_title)
+        header.addWidget(lbl_head)
         header.addStretch()
-        header.addWidget(btn_close, alignment=Qt.AlignTop)
+        header.addWidget(btn_close)
         layout.addLayout(header)
-        
-        row = QHBoxLayout()
-        self.input = QLineEdit(default)
-        if password:
-            self.input.setEchoMode(QLineEdit.Password)
-        self.input.setStyleSheet("""
-            QLineEdit { background-color: #1a1a1b; color: white; border: 1px solid #333; border-radius: 12px; padding: 6px 15px; font-size: 12px; }
-        """)
-        
-        btn_ok = QPushButton("ok")
-        btn_ok.setFixedSize(65, 28)
-        btn_ok.setStyleSheet("""
-            QPushButton { background-color: transparent; color: #888; border: 1px solid #333; border-radius: 14px; font-size: 13px; }
-            QPushButton:hover { border-color: #da8826; color: #da8826; }
-        """)
-        btn_ok.clicked.connect(self.accept_data)
-        
-        row.addWidget(self.input)
-        row.addWidget(btn_ok)
-        layout.addLayout(row)
 
-    def showEvent(self, e):
-        center(self)
+        self.input = QLineEdit(default)
+        if password: self.input.setEchoMode(QLineEdit.Password)
+        self.input.setStyleSheet("background: #1a1a1b; color: white; border: 1px solid #333; border-radius: 10px; padding: 8px;")
+        layout.addWidget(QLabel(label.upper() + ":"))
+        layout.addWidget(self.input)
+
+        btn_ok = QPushButton("OK")
+        btn_ok.setFixedSize(80, 30)
+        btn_ok.setStyleSheet("QPushButton { border: 1px solid #333; border-radius: 15px; color: #888; } QPushButton:hover { border-color: #da8826; color: white; }")
+        btn_ok.clicked.connect(self.accept_data)
+        layout.addWidget(btn_ok, alignment=Qt.AlignRight)
 
     def accept_data(self):
         self.result = self.input.text()
         self.accept()
 
-
-class ConfirmDialog(CustomInputDialog):
-    def __init__(self, parent, text):
-        super().__init__(parent, "CONFIRM")
-        # Sobrescreve o layout de input do parente
-        self.input.hide()
-        
-        layout = self.layout() # Acessando pelo frame principal
-        row = layout.itemAt(1).layout()
-        while row.count():
-            item = row.takeAt(0)
-            if item.widget(): item.widget().deleteLater()
-            
-        lbl = QLabel(text.upper())
-        lbl.setStyleSheet("color: #888;")
-        row.addWidget(lbl)
-
-        btn_cancel = QPushButton("cancel")
-        btn_ok = QPushButton("yes")
-        
-        for b in (btn_cancel, btn_ok):
-            b.setFixedSize(65, 28)
-            b.setStyleSheet("""
-                QPushButton { background-color: transparent; color: #888; border: 1px solid #333; border-radius: 14px; font-size: 13px; }
-                QPushButton:hover { border-color: #da8826; color: #da8826; }
-            """)
-            
-        btn_cancel.clicked.connect(self.reject)
-        btn_ok.clicked.connect(self.accept_data)
-        
-        row.addWidget(btn_cancel)
-        row.addWidget(btn_ok)
-
-    def accept_data(self):
-        self.result = True
-        self.accept()
-
-
-class ConfigWindow(FramelessDraggable):
-    """Main Window para gerenciar credenciais"""
+class ConfigWindow(DraggableWindow):
     def __init__(self, config, on_save):
         super().__init__()
         self.config = config
         self.on_save = on_save
-        self.init_ui()
-
-    def showEvent(self, e):
-        center(self)
-
-    def init_ui(self):
-        self.setFixedSize(480, 360)
-        self.frame = QFrame(self)
-        self.frame.resize(self.size())
-        self.frame.setStyleSheet("QFrame#BaseFrame { background-color: #242426; border-radius: 20px; border: 1px solid #333; }")
-        self.frame.setObjectName("BaseFrame")
-
-        content = QVBoxLayout(self.frame)
-        content.setContentsMargins(20, 20, 20, 20)
-        content.setSpacing(10)
-
-        header = HeaderWidget("OVERWATCH SMURFER", "SIMPLE MULTI LOGIN TOOL", show_close=True)
-        content.addWidget(header)
-
-        # Configuração da Lista e Scrollbar Customizada
-        self.list = QListWidget()
-        self.list.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.list.setStyleSheet("""
-            QListWidget { background: transparent; border: none; outline: none; }
-            QListWidget::item { border-bottom: 1px solid #333; }
-            QListWidget::item:selected { background-color: #da8826; border-radius: 10px; }
-            QScrollBar:vertical { border: none; background: transparent; width: 6px; margin: 0px; }
-            QScrollBar::handle:vertical { background: #444; min-height: 20px; border-radius: 3px; }
-            QScrollBar::handle:vertical:hover { background: #da8826; }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
-        """)
-        self.list.itemSelectionChanged.connect(self.on_selection_changed)
-        content.addWidget(self.list)
-
-        self.refresh()
-
-        btns = QHBoxLayout()
-        btns.setSpacing(10)
+        self.setFixedSize(480, 380)
         
-        for text, slot in [("add", self.add), ("edit", self.edit), ("delete", self.remove)]:
-            btn = QPushButton(text)
-            btn.setStyleSheet("""
-                QPushButton { background: transparent; border: 1px solid #333; border-radius: 15px; color: #888; padding: 7px 0px; }
-                QPushButton:hover { border-color: #da8826; color: white; }
-            """)
-            btn.clicked.connect(slot)
-            btns.addWidget(btn)
+        frame = QFrame(self)
+        frame.resize(self.size())
+        frame.setStyleSheet("QFrame { background-color: #242426; border-radius: 20px; border: 1px solid #333; }")
+        
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(25, 25, 25, 25)
+        
+        layout.addWidget(HeaderWidget("OVERWATCH SMURFER", "ACCOUNT MANAGER"))
+        
+        self.list = QListWidget()
+        self.list.setStyleSheet("""
+            QListWidget { background: transparent; border: none; }
+            QListWidget::item:selected { background: #da8826; border-radius: 10px; }
+            QScrollBar:vertical { width: 6px; background: transparent; }
+            QScrollBar::handle:vertical { background: #444; border-radius: 3px; }
+        """)
+        self.list.itemSelectionChanged.connect(self.on_sel_change)
+        layout.addWidget(self.list)
 
-        content.addLayout(btns)
+        btn_layout = QHBoxLayout()
+        for t, s in [("ADD", self.add), ("EDIT", self.edit), ("DELETE", self.remove)]:
+            b = QPushButton(t)
+            b.setStyleSheet("QPushButton { border: 1px solid #333; border-radius: 15px; color: #888; padding: 8px; } QPushButton:hover { border-color: #da8826; color: white; }")
+            b.clicked.connect(s)
+            btn_layout.addWidget(b)
+        layout.addLayout(btn_layout)
+        self.refresh()
 
     def refresh(self):
         self.list.clear()
         for c in self.config['contas']:
             item = QListWidgetItem()
-            widget = AccountItemWidget(c['bnet'], c['email'])
-            item.setSizeHint(widget.sizeHint())
+            w = AccountItemWidget(c['bnet'], c['email'])
+            item.setSizeHint(w.sizeHint())
             self.list.addItem(item)
-            self.list.setItemWidget(item, widget)
+            self.list.setItemWidget(item, w)
 
-    def on_selection_changed(self):
+    def on_sel_change(self):
         for i in range(self.list.count()):
-            item = self.list.item(i)
-            widget = self.list.itemWidget(item)
-            if widget:
-                if item.isSelected():
-                    widget.set_selected_style()
-                else:
-                    widget.set_normal_style()
+            it = self.list.item(i)
+            w = self.list.itemWidget(it)
+            if w: w.set_style(it.isSelected())
 
     def add(self):
-        e = CustomInputDialog(self, "EMAIL")
-        if e.exec() and e.result:
-            s = CustomInputDialog(self, "SENHA", True)
-            if s.exec() and s.result:
-                n = CustomInputDialog(self, "BATTLETAG")
-                if n.exec() and n.result:
-                    self.config['contas'].append({"email": e.result, "senha": s.result, "bnet": n.result})
-                    self.salvar()
+        d = CustomInputDialog(self, "New Account", "Email")
+        if d.exec() and d.result:
+            p = CustomInputDialog(self, "New Account", "Password", True)
+            if p.exec() and p.result:
+                b = CustomInputDialog(self, "New Account", "Battletag")
+                if b.exec() and b.result:
+                    self.config['contas'].append({"email": d.result, "senha": p.result, "bnet": b.result})
+                    self.save()
 
     def edit(self):
-        idx = self.list.currentRow()
-        if idx < 0: return
-
-        conta = self.config['contas'][idx]
-        e = CustomInputDialog(self, "EMAIL", default=conta['email'])
-        if e.exec() and e.result:
-            s = CustomInputDialog(self, "SENHA", True, default=conta['senha'])
-            if s.exec() and s.result:
-                n = CustomInputDialog(self, "BATTLETAG", default=conta['bnet'])
-                if n.exec() and n.result:
-                    conta.update({"email": e.result, "senha": s.result, "bnet": n.result})
-                    self.salvar()
+        row = self.list.currentRow()
+        if row < 0: return
+        c = self.config['contas'][row]
+        d = CustomInputDialog(self, "Edit", "Email", default=c['email'])
+        if d.exec() and d.result:
+            c.update({"email": d.result})
+            self.save()
 
     def remove(self):
-        idx = self.list.currentRow()
-        if idx < 0: return
+        row = self.list.currentRow()
+        if row >= 0:
+            self.config['contas'].pop(row)
+            self.save()
 
-        dlg = ConfirmDialog(self, "DELETE ACCOUNT?")
-        if dlg.exec() and dlg.result:
-            self.config['contas'].pop(idx)
-            self.salvar()
-
-    def salvar(self):
+    def save(self):
         salvar_config(self.config)
         self.on_save()
         self.refresh()
 
-
-class Overlay(FramelessDraggable):
-    """Action Window que expande em tamanho automaticamente"""
+class Overlay(DraggableWindow):
     def __init__(self, config, callback, mode_cb):
         super().__init__()
         self.config = config
         self.callback = callback
-        self.mode_cb = mode_cb
         
-        self.frame = QFrame(self)
-        self.frame.setObjectName("BaseFrame")
-        self.frame.setStyleSheet("QFrame#BaseFrame { background-color: #1a1a1b; border-radius: 25px; border: 1px solid #333; }")
+        frame = QFrame(self)
+        frame.setStyleSheet("background-color: #1a1a1b; border-radius: 25px; border: 1px solid #333;")
         
-        self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_layout.addWidget(self.frame)
+        self.layout_base = QVBoxLayout(self)
+        self.layout_base.addWidget(frame)
         
-        self.content = QVBoxLayout(self.frame)
-        self.content.setContentsMargins(25, 25, 25, 25)
-        self.content.setSpacing(12)
-        self.content.setSizeConstraint(QVBoxLayout.SetFixedSize)
+        content = QVBoxLayout(frame)
+        content.setContentsMargins(30, 30, 30, 30)
+        content.setSpacing(15)
+        content.setSizeConstraint(QVBoxLayout.SetFixedSize)
         
-        header = HeaderWidget("OVERWATCH SMURFER", "SIMPLE MULTI LOGIN TOOL", show_close=False)
-        self.content.addWidget(header)
-        self.content.addSpacing(5)
-        
-        if not self.config['contas']:
-            lbl = QLabel("No accounts registered")
-            lbl.setStyleSheet("color: #888;")
-            self.content.addWidget(lbl, alignment=Qt.AlignCenter)
+        content.addWidget(HeaderWidget("SELECT ACCOUNT", "QUICK LOGIN", show_close=False))
         
         for c in self.config['contas']:
             btn = QPushButton(c['bnet'])
-            btn.setProperty("class", "ActionBtn")
+            btn.setStyleSheet("""
+                QPushButton { background: transparent; border: 1px solid #333; border-radius: 18px; color: #888; padding: 12px; font-size: 13px; }
+                QPushButton:hover { border-color: #da8826; color: #da8826; }
+            """)
             btn.clicked.connect(lambda _, x=c: self.callback(x))
-            self.content.addWidget(btn)
+            content.addWidget(btn)
             
-        self.mode_toggle = ModeToggle(self.config.get('modo', 'enter'))
-        self.mode_toggle.toggled.connect(self.mode_cb)
-        self.content.addWidget(self.mode_toggle)
+        toggle = ModeToggle(self.config.get('modo', 'enter'))
+        toggle.toggled.connect(mode_cb)
+        content.addWidget(toggle)
         
         lbl_esc = QLabel("PRESS ESC TO CANCEL")
         lbl_esc.setAlignment(Qt.AlignCenter)
-        lbl_esc.setStyleSheet("color: #444; font-size: 9px; letter-spacing: 1px; font-family: 'Segoe UI', Arial;")
-        self.content.addWidget(lbl_esc)
-        
-        self.setStyleSheet("""
-            QPushButton[class="ActionBtn"] {
-                background-color: transparent; color: #888; border: 1px solid #333;
-                border-radius: 16px; padding: 9px; font-size: 13px; font-family: 'Segoe UI', Arial;
-            }
-            QPushButton[class="ActionBtn"]:hover { border: 1px solid #da8826; color: #da8826; }
-        """)
+        lbl_esc.setStyleSheet("color: #444; font-size: 9px;")
+        content.addWidget(lbl_esc)
 
-    def showEvent(self, e):
-        center(self)
-
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Escape:
-            self.hide()
-        super().keyPressEvent(event)
-
+    def keyPressEvent(self, e):
+        if e.key() == Qt.Key_Escape: self.hide()
 
 # ==============================================================================
-# APP PRINCIPAL
+# LOGICA PRINCIPAL
 # ==============================================================================
 
 class App:
@@ -480,87 +364,55 @@ class App:
         self.config = carregar_config()
         self.bridge = HotkeyBridge()
         self.bridge.triggered.connect(self.toggle)
-
         self.overlay = None
         self.config_win = None
 
-        self.tray = QSystemTrayIcon(self.icon())
+        self.tray = QSystemTrayIcon(self.get_icon())
         menu = QMenu()
-        menu.addAction("Config", self.open_config)
-        menu.addAction("Set Hotkey", self.change_hotkey)
-        menu.addSeparator()
+        menu.addAction("Settings", self.open_settings)
         menu.addAction("Exit", sys.exit)
         self.tray.setContextMenu(menu)
         self.tray.show()
 
         self.setup_hotkey()
 
-        if not self.config['contas']:
-            self.open_config()
-
-    def icon(self):
-        if not os.path.exists(LOGO_PATH):
-            # Fallback icon se não achar no diretório para não quebrar a SystemTray
-            img_path = os.path.join(APPDATA_PATH, "icon.png")
-            if not os.path.exists(img_path):
-                img = Image.new('RGB', (64, 64), (218, 136, 38))
-                ImageDraw.Draw(img).ellipse((10, 10, 54, 54), fill="white")
-                img.save(img_path)
-            return QIcon(img_path)
-        return QIcon(LOGO_PATH)
+    def get_icon(self):
+        if os.path.exists(LOGO_PATH): return QIcon(LOGO_PATH)
+        # Fallback
+        return QIcon()
 
     def setup_hotkey(self):
         keyboard.unhook_all()
-        try:
-            keyboard.add_hotkey(self.config['atalho'], self.bridge.triggered.emit)
-        except Exception as e:
-            print("Hotkey error:", e)
+        keyboard.add_hotkey(self.config['atalho'], self.bridge.triggered.emit)
 
-    def change_hotkey(self):
-        d = CustomInputDialog(None, "HOTKEY", default=self.config['atalho'])
-        if d.exec() and d.result:
-            self.config['atalho'] = d.result
-            salvar_config(self.config)
-            self.setup_hotkey()
-
-    def open_config(self):
-        if not self.config_win:
-            self.config_win = ConfigWindow(self.config, self.setup_hotkey)
+    def open_settings(self):
+        if not self.config_win: self.config_win = ConfigWindow(self.config, self.setup_hotkey)
         self.config_win.show()
-        self.config_win.activateWindow()
-
-    def update_mode(self, mode):
-        self.config['modo'] = mode
-        salvar_config(self.config)
+        center(self.config_win)
 
     def toggle(self):
         if self.overlay and self.overlay.isVisible():
             self.overlay.hide()
-            return
+        else:
+            self.overlay = Overlay(self.config, self.login, self.set_mode)
+            self.overlay.show()
+            center(self.overlay)
 
-        self.overlay = Overlay(self.config, self.exec_login, self.update_mode)
-        self.overlay.show()
+    def set_mode(self, m):
+        self.config['modo'] = m
+        salvar_config(self.config)
 
-    def exec_login(self, conta):
+    def login(self, conta):
         self.overlay.hide()
-
         def run():
             time.sleep(0.5)
             keyboard.write(conta['email'])
             time.sleep(0.1)
-            
-            # Respeitando a variação de enter ou tab
-            if self.config.get('modo', 'enter') == 'tab':
-                keyboard.press_and_release('tab')
-            else:
-                keyboard.press_and_release('enter')
-                
+            keyboard.press_and_release('tab' if self.config['modo'] == 'tab' else 'enter')
             time.sleep(0.5)
             keyboard.write(conta['senha'])
             keyboard.press_and_release('enter')
-
         threading.Thread(target=run, daemon=True).start()
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
