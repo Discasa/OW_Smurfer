@@ -90,30 +90,30 @@ class HeaderWidget(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         
-        self.logo = QLabel()
-        self.logo.setFixedSize(32, 32)
+        logo = QLabel()
+        logo.setFixedSize(32, 32)
         pix = QPixmap(LOGO_PATH)
         if not pix.isNull():
-            self.logo.setPixmap(pix.scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            logo.setPixmap(pix.scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         else:
-            self.logo.setStyleSheet("background-color: #da8826; border-radius: 16px;")
+            logo.setStyleSheet("background-color: #da8826; border-radius: 16px;")
 
         t_layout = QVBoxLayout(); t_layout.setSpacing(0)
         lbl_title = QLabel(title); lbl_title.setStyleSheet("color: #da8826; font-size: 14px; font-weight: bold;")
         lbl_sub = QLabel(subtitle); lbl_sub.setStyleSheet("color: #ffffff; font-size: 10px; letter-spacing: 1px;")
         t_layout.addWidget(lbl_title); t_layout.addWidget(lbl_sub)
         
-        layout.addWidget(self.logo)
+        layout.addWidget(logo)
         layout.addLayout(t_layout)
         layout.addStretch()
 
         if show_close:
-            self.btn_close = QPushButton()
-            self.btn_close.setFixedSize(16, 16)
-            self.btn_close.setCursor(Qt.PointingHandCursor)
-            self.btn_close.setStyleSheet("background-color: #c7302b; border-radius: 8px; border: none;")
-            self.btn_close.clicked.connect(lambda: self.window().hide())
-            layout.addWidget(self.btn_close, alignment=Qt.AlignTop)
+            btn_close = QPushButton()
+            btn_close.setFixedSize(16, 16)
+            btn_close.setCursor(Qt.PointingHandCursor)
+            btn_close.setStyleSheet("background-color: #c7302b; border-radius: 8px; border: none;")
+            btn_close.clicked.connect(lambda: self.window().hide())
+            layout.addWidget(btn_close, alignment=Qt.AlignTop)
 
 class AccountItemWidget(QWidget):
     def __init__(self, bnet, email, parent=None):
@@ -181,6 +181,40 @@ class CustomInputDialog(DraggableDialog):
     def accept_data(self):
         self.result = self.input.text(); self.accept()
 
+class ConfirmDialog(DraggableDialog):
+    def __init__(self, parent, title, text):
+        super().__init__(parent)
+        self.setFixedSize(380, 160); self.result = False
+        frame = QFrame(self); frame.resize(self.size())
+        frame.setStyleSheet("background-color: #242426; border-radius: 20px; border: 1px solid #333;")
+        layout = QVBoxLayout(frame); layout.setContentsMargins(20, 15, 20, 15)
+
+        header = QHBoxLayout()
+        lbl_head = QLabel(title.upper()); lbl_head.setStyleSheet("color: white; font-weight: bold; font-size: 11px; border: none;")
+        btn_close = QPushButton(); btn_close.setFixedSize(14, 14); btn_close.setStyleSheet("background-color: #c7302b; border-radius: 7px; border: none;")
+        btn_close.clicked.connect(self.reject)
+        header.addWidget(lbl_head); header.addStretch(); header.addWidget(btn_close); layout.addLayout(header)
+
+        lbl_text = QLabel(text.upper())
+        lbl_text.setAlignment(Qt.AlignCenter)
+        lbl_text.setWordWrap(True)
+        lbl_text.setStyleSheet("color: #bbbbbb; border: none;")
+        layout.addWidget(lbl_text, alignment=Qt.AlignCenter)
+
+        btn_row = QHBoxLayout()
+        btn_cancel = QPushButton("CANCEL")
+        btn_ok = QPushButton("YES")
+        for btn in (btn_cancel, btn_ok):
+            btn.setFixedSize(90, 30)
+            btn.setStyleSheet("QPushButton { border: 1px solid #333; border-radius: 15px; color: #888; } QPushButton:hover { border-color: #da8826; color: white; }")
+        btn_cancel.clicked.connect(self.reject)
+        btn_ok.clicked.connect(self.accept_confirm)
+        btn_row.addStretch(); btn_row.addWidget(btn_cancel); btn_row.addWidget(btn_ok)
+        layout.addLayout(btn_row)
+
+    def accept_confirm(self):
+        self.result = True; self.accept()
+
 class ConfigWindow(DraggableWindow):
     def __init__(self, config, on_save):
         super().__init__()
@@ -199,7 +233,14 @@ class ConfigWindow(DraggableWindow):
         for t, s in [("ADD", self.add), ("EDIT", self.edit), ("DELETE", self.remove)]:
             b = QPushButton(t); b.setStyleSheet("QPushButton { border: 1px solid #333; border-radius: 15px; color: #888; padding: 8px; } QPushButton:hover { border-color: #da8826; color: white; }")
             b.clicked.connect(s); btn_layout.addWidget(b)
-        layout.addLayout(btn_layout); self.refresh()
+        layout.addLayout(btn_layout)
+
+        self.hotkey_btn = QPushButton()
+        self.hotkey_btn.setStyleSheet("QPushButton { border: 1px solid #333; border-radius: 15px; color: #888; padding: 8px; } QPushButton:hover { border-color: #da8826; color: white; }")
+        self.hotkey_btn.clicked.connect(self.change_hotkey)
+        layout.addWidget(self.hotkey_btn)
+
+        self.refresh_hotkey(); self.refresh()
 
     def refresh(self):
         self.list.clear()
@@ -227,23 +268,42 @@ class ConfigWindow(DraggableWindow):
         if row < 0: return
         c = self.config['contas'][row]
         d = CustomInputDialog(self, "Edit", "Email", default=c['email'])
-        if d.exec() and d.result: c.update({"email": d.result}); self.save()
+        if d.exec() and d.result:
+            p = CustomInputDialog(self, "Edit", "Password", True, default=c['senha'])
+            if p.exec() and p.result:
+                b = CustomInputDialog(self, "Edit", "Battletag", default=c['bnet'])
+                if b.exec() and b.result:
+                    c.update({"email": d.result, "senha": p.result, "bnet": b.result}); self.save()
 
     def remove(self):
         row = self.list.currentRow()
-        if row >= 0: self.config['contas'].pop(row); self.save()
+        if row < 0: return
+        bnet = self.config['contas'][row]['bnet']
+        dialog = ConfirmDialog(self, "Delete Account", f"Delete account {bnet}?")
+        if dialog.exec() and dialog.result:
+            self.config['contas'].pop(row); self.save()
+
+    def change_hotkey(self):
+        current = self.config.get('atalho', DEFAULT_CONFIG['atalho'])
+        d = CustomInputDialog(self, "Hotkey", "Shortcut", default=current)
+        if d.exec() and d.result:
+            self.config['atalho'] = d.result; self.save()
+
+    def refresh_hotkey(self):
+        hotkey = self.config.get('atalho', DEFAULT_CONFIG['atalho']).upper()
+        self.hotkey_btn.setText(f"HOTKEY: {hotkey}")
 
     def save(self):
-        salvar_config(self.config); self.on_save(); self.refresh()
+        salvar_config(self.config); self.on_save(); self.refresh_hotkey(); self.refresh()
 
 # --- Overlay Principal ---
 class Overlay(DraggableWindow):
     def __init__(self, config, login_callback, mode_callback):
         super().__init__()
         self.config = config; self.login_callback = login_callback; self.mode_callback = mode_callback
-        self.frame = QFrame(self); self.frame.setStyleSheet("background-color: #1a1a1b; border-radius: 25px; border: 1px solid #333;")
-        self.main_layout = QVBoxLayout(self); self.main_layout.addWidget(self.frame)
-        self.content = QVBoxLayout(self.frame); self.content.setContentsMargins(30, 30, 30, 30); self.content.setSpacing(15)
+        frame = QFrame(self); frame.setStyleSheet("background-color: #1a1a1b; border-radius: 25px; border: 1px solid #333;")
+        layout = QVBoxLayout(self); layout.addWidget(frame)
+        self.content = QVBoxLayout(frame); self.content.setContentsMargins(30, 30, 30, 30); self.content.setSpacing(15)
         self.refresh_ui()
 
     def refresh_ui(self):
@@ -256,7 +316,8 @@ class Overlay(DraggableWindow):
             btn.clicked.connect(lambda _, x=c: self.login_callback(x)); self.content.addWidget(btn)
         self.toggle_btn = ModeToggle(self.config.get('modo', 'enter'))
         self.toggle_btn.toggled.connect(self.mode_callback); self.content.addWidget(self.toggle_btn)
-        lbl_esc = QLabel("ESC: CLOSE | CTRL+L: TOGGLE MODE"); lbl_esc.setAlignment(Qt.AlignCenter); lbl_esc.setStyleSheet("color: #444; font-size: 8px;")
+        hotkey = self.config.get('atalho', DEFAULT_CONFIG['atalho']).upper()
+        lbl_esc = QLabel(f"ESC: CLOSE | {hotkey}: TOGGLE MODE"); lbl_esc.setAlignment(Qt.AlignCenter); lbl_esc.setStyleSheet("color: #444; font-size: 8px;")
         self.content.addWidget(lbl_esc); self.adjustSize()
 
     def keyPressEvent(self, e):
@@ -276,7 +337,7 @@ class App:
         menu = QMenu(); menu.addAction("Settings", self.open_settings); menu.addAction("Exit", QApplication.quit)
         self.tray.setContextMenu(menu); self.tray.show()
 
-        keyboard.add_hotkey(self.config['atalho'], self.bridge.triggered.emit)
+        self.setup_hotkey()
 
     def handle_hotkey(self):
         if self.overlay.isVisible():
@@ -291,7 +352,22 @@ class App:
         self.config_win.show(); center(self.config_win)
 
     def on_config_saved(self):
-        self.overlay.refresh_ui()
+        self.setup_hotkey(); self.overlay.refresh_ui()
+
+    def setup_hotkey(self):
+        keyboard.unhook_all()
+        hotkey = self.config.get('atalho', DEFAULT_CONFIG['atalho'])
+        try:
+            keyboard.add_hotkey(hotkey, self.bridge.triggered.emit)
+        except Exception as exc:
+            print(f"Hotkey error for '{hotkey}': {exc}")
+            if hotkey == DEFAULT_CONFIG['atalho']:
+                return
+            self.config['atalho'] = DEFAULT_CONFIG['atalho']; salvar_config(self.config)
+            try:
+                keyboard.add_hotkey(DEFAULT_CONFIG['atalho'], self.bridge.triggered.emit)
+            except Exception as fallback_exc:
+                print(f"Fallback hotkey error: {fallback_exc}")
 
     def set_mode(self, m):
         self.config['modo'] = m; salvar_config(self.config)
@@ -303,7 +379,7 @@ class App:
             keyboard.write(conta['email'])
             time.sleep(0.1)
             keyboard.press_and_release('tab' if self.config['modo'] == 'tab' else 'enter')
-            time.sleep(0.4)
+            time.sleep(1.0)
             keyboard.write(conta['senha'])
             keyboard.press_and_release('enter')
         threading.Thread(target=run, daemon=True).start()
