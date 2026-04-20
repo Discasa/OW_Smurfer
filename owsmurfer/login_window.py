@@ -17,14 +17,14 @@ class LoginWindow(DraggableWindow):
         self.mode_callback = mode_callback
 
         panel_frame = QFrame(self)
-        panel_frame.setStyleSheet(frame_style(Palette.SURFACE, Radius.OVERLAY))
+        panel_frame.setStyleSheet(frame_style(Palette.SURFACE, Radius.CONTAINER))
 
         root_layout = QVBoxLayout(self)
         root_layout.addWidget(panel_frame)
 
         self.content_layout = QVBoxLayout(panel_frame)
         self.content_layout.setContentsMargins(*Insets.OVERLAY)
-        self.content_layout.setSpacing(Space.XXXL)
+        self.content_layout.setSpacing(Space.BIG)
         self.mode_toggle = None
 
         self.refresh_ui()
@@ -44,8 +44,8 @@ class LoginWindow(DraggableWindow):
             account_button = themed_button(
                 account["battle_tag"],
                 text_color=Palette.TEXT_PRIMARY,
-                radius=Radius.ACCOUNT,
-                font_size=Typography.ACCOUNT_BUTTON,
+                radius=Radius.BUTTON,
+                font_size=Typography.ACTION,
                 font_weight=FontWeight.MEDIUM,
                 padding=Padding.ACCOUNT_BUTTON,
             )
@@ -59,7 +59,7 @@ class LoginWindow(DraggableWindow):
         current_hotkey = self.config.get("hotkey", DEFAULT_CONFIG["hotkey"]).upper()
         hint_label = QLabel(Text.HOTKEY_HINT.format(hotkey=current_hotkey))
         hint_label.setAlignment(Qt.AlignCenter)
-        hint_label.setStyleSheet(label_style(color=Palette.TEXT_HINT, size=Typography.HINT))
+        hint_label.setStyleSheet(label_style(color=Palette.TEXT_HINT, size=Typography.HUD))
         self.content_layout.addWidget(hint_label)
 
         self.adjustSize()

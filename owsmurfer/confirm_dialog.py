@@ -26,7 +26,7 @@ class ConfirmDialog(DraggableDialog):
         confirm_button = themed_button(
             Text.DIALOG_CONFIRM_ACCEPT,
             radius=Radius.BUTTON,
-            font_size=Typography.BUTTON,
+            font_size=Typography.ACTION,
             padding=Padding.DIALOG_ACTION,
             text_color=Palette.ACCENT,
             hover_text_color=Palette.TEXT_PRIMARY,

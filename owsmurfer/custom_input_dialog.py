@@ -27,7 +27,7 @@ class CustomInputDialog(DraggableDialog):
         dialog_layout.addWidget(field_label)
         dialog_layout.addWidget(self.input_field)
 
-        confirm_button = themed_button(Text.DIALOG_INPUT_ACCEPT, radius=Radius.BUTTON, font_size=Typography.BUTTON, padding=Padding.DIALOG_ACTION)
+        confirm_button = themed_button(Text.DIALOG_INPUT_ACCEPT, radius=Radius.BUTTON, font_size=Typography.ACTION, padding=Padding.DIALOG_ACTION)
         confirm_button.setFixedSize(*Size.DIALOG_PRIMARY_BUTTON)
         confirm_button.clicked.connect(self.accept_input)
         dialog_layout.addWidget(confirm_button, alignment=Qt.AlignRight)

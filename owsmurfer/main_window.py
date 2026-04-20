@@ -19,11 +19,11 @@ class MainWindow(DraggableWindow):
 
         panel_frame = QFrame(self)
         panel_frame.resize(self.size())
-        panel_frame.setStyleSheet(frame_style(Palette.SURFACE, Radius.PANEL))
+        panel_frame.setStyleSheet(frame_style(Palette.SURFACE, Radius.CONTAINER))
 
         content_layout = QVBoxLayout(panel_frame)
         content_layout.setContentsMargins(*Insets.MAIN_WINDOW)
-        content_layout.setSpacing(Space.XXL)
+        content_layout.setSpacing(Space.BIG)
         content_layout.addWidget(HeaderWidget(Headers.MAIN))
 
         self.account_list = QListWidget()
@@ -34,7 +34,7 @@ class MainWindow(DraggableWindow):
         content_layout.addWidget(self.account_list)
 
         action_button_layout = QHBoxLayout()
-        action_button_layout.setSpacing(Space.LG)
+        action_button_layout.setSpacing(Space.LARGE)
         for text, callback in [
             (Text.MAIN_WINDOW_ADD, self.add_account),
             (Text.MAIN_WINDOW_EDIT, self.edit_account),

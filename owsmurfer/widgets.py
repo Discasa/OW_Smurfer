@@ -21,8 +21,6 @@ from .theme import (
     close_button_style,
     frame_style,
     label_style,
-    qss_block,
-    solid_border,
     style_rules,
     transparent_style,
 )
@@ -34,14 +32,14 @@ class AnimatedButton(QPushButton):
         text="",
         parent=None,
         *,
-        background_color=Palette.SURFACE,
+        background_color=Palette.SURFACE_RAISED,
         hover_background_color=Palette.SURFACE_INTERACTIVE,
         text_color=Palette.TEXT_MUTED,
         hover_text_color=Palette.TEXT_PRIMARY,
         border_color=Palette.BORDER,
         hover_border_color=None,
-        radius=Radius.BUTTON_SOFT,
-        font_size=Typography.BUTTON,
+        radius=Radius.BUTTON,
+        font_size=Typography.ACTION,
         font_weight=FontWeight.MEDIUM,
         padding=Padding.BUTTON_BASE,
     ):
@@ -60,6 +58,7 @@ class AnimatedButton(QPushButton):
 
         self.setCursor(Qt.PointingHandCursor)
         self.setFocusPolicy(Qt.NoFocus)
+        self.setFlat(True)
 
         self._hover_animation = QVariantAnimation(self)
         self._hover_animation.setDuration(Motion.BUTTON_HOVER_MS)
@@ -75,20 +74,7 @@ class AnimatedButton(QPushButton):
         )
 
     def _apply_style(self, animation_progress):
-        background_color = self._blend(self._base_background_color, self._hover_background_color, animation_progress)
-        text_color = self._blend(self._base_text_color, self._hover_text_color, animation_progress)
-        border_color = self._blend(self._base_border_color, self._hover_border_color, animation_progress)
-        self.setStyleSheet(qss_block(
-            "QPushButton",
-            background_color=background_color.name(),
-            color=text_color.name(),
-            border=solid_border(border_color.name()),
-            border_radius=self._radius,
-            padding=self._padding,
-            font_size=self._font_size,
-            font_weight=self._font_weight,
-            outline=Border.NONE,
-        ))
+        self.update()
 
     def _animate_to(self, target_progress):
         self._hover_animation.stop()
@@ -99,6 +85,47 @@ class AnimatedButton(QPushButton):
     def _on_value_changed(self, animation_value):
         self._animation_progress = float(animation_value)
         self._apply_style(self._animation_progress)
+
+    def sizeHint(self):
+        font = QFont(self.font())
+        font.setPixelSize(self._font_size)
+        font.setWeight(QFont.Weight(self._font_weight))
+        metrics = QFontMetrics(font)
+        vertical_padding, horizontal_padding = self._padding
+        width = metrics.horizontalAdvance(self.text()) + (horizontal_padding * 2) + (Border.WIDTH * 2)
+        height = metrics.height() + (vertical_padding * 2) + (Border.WIDTH * 2)
+        return QSize(width, height)
+
+    def minimumSizeHint(self):
+        return self.sizeHint()
+
+    def paintEvent(self, event):
+        del event
+
+        background_color = self._blend(self._base_background_color, self._hover_background_color, self._animation_progress)
+        text_color = self._blend(self._base_text_color, self._hover_text_color, self._animation_progress)
+        border_color = self._blend(self._base_border_color, self._hover_border_color, self._animation_progress)
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.TextAntialiasing)
+
+        rect = QRectF(self.rect()).adjusted(
+            Border.WIDTH / 2,
+            Border.WIDTH / 2,
+            -(Border.WIDTH / 2),
+            -(Border.WIDTH / 2),
+        )
+        painter.setPen(QPen(border_color, Border.WIDTH))
+        painter.setBrush(background_color)
+        painter.drawRoundedRect(rect, self._radius, self._radius)
+
+        font = QFont(self.font())
+        font.setPixelSize(self._font_size)
+        font.setWeight(QFont.Weight(self._font_weight))
+        painter.setFont(font)
+        painter.setPen(text_color)
+        painter.drawText(self.rect(), Qt.AlignCenter, self.text())
 
     def enterEvent(self, event):
         self._animate_to(1.0)
@@ -111,14 +138,14 @@ class AnimatedButton(QPushButton):
 
 def themed_button(text="", parent=None, **overrides):
     options = {
-        "background_color": Palette.SURFACE,
+        "background_color": Palette.SURFACE_RAISED,
         "hover_background_color": Palette.SURFACE_INTERACTIVE,
         "text_color": Palette.TEXT_MUTED,
         "hover_text_color": Palette.TEXT_PRIMARY,
         "border_color": Palette.BORDER,
         "hover_border_color": Palette.BORDER,
         "radius": Radius.BUTTON,
-        "font_size": Typography.BUTTON,
+        "font_size": Typography.ACTION,
         "padding": Padding.BUTTON_DEFAULT,
     }
     options.update(overrides)
@@ -130,7 +157,7 @@ class HeaderWidget(QWidget):
         super().__init__(parent)
         header_layout = QHBoxLayout(self)
         header_layout.setContentsMargins(*Insets.NONE)
-        header_layout.setSpacing(Space.MD)
+        header_layout.setSpacing(Space.MID)
 
         logo_label = QLabel()
         logo_label.setFixedSize(HeaderTokens.LOGO_SIZE, HeaderTokens.LOGO_SIZE)
@@ -200,7 +227,7 @@ class AccountItemWidget(QWidget):
 
         content_layout = QVBoxLayout(self)
         content_layout.setContentsMargins(*Insets.ACCOUNT_ITEM)
-        content_layout.setSpacing(Space.XS)
+        content_layout.setSpacing(Space.SMALL)
 
         self.battle_tag_label = QLabel(battle_tag)
         self.battle_tag_label.setAlignment(Qt.AlignCenter)
@@ -208,13 +235,13 @@ class AccountItemWidget(QWidget):
         self.account_details_label.setAlignment(Qt.AlignCenter)
 
         self._apply_fonts()
-        self._battle_tag_label_style = label_style(color=Palette.ACCENT, size=Typography.BATTLETAG) + style_rules(
+        self._battle_tag_label_style = label_style(color=Palette.ACCENT, size=Typography.HUD) + style_rules(
             padding_top=Padding.BATTLE_TAG_LABEL[0],
             padding_bottom=Padding.BATTLE_TAG_LABEL[1],
         )
         self._details_label_styles = {
-            True: label_style(color=Palette.TEXT_PRIMARY, size=Typography.DETAILS),
-            False: label_style(color=Palette.TEXT_MUTED, size=Typography.DETAILS),
+            True: label_style(color=Palette.TEXT_PRIMARY, size=Typography.HUD),
+            False: label_style(color=Palette.TEXT_MUTED, size=Typography.HUD),
         }
 
         content_layout.addWidget(self.battle_tag_label)
@@ -223,12 +250,12 @@ class AccountItemWidget(QWidget):
 
     def _apply_fonts(self):
         battle_tag_font = QFont(self.battle_tag_label.font())
-        battle_tag_font.setPixelSize(Typography.BATTLETAG)
+        battle_tag_font.setPixelSize(Typography.HUD)
         self.battle_tag_label.setFont(battle_tag_font)
         self.battle_tag_label.setFixedHeight(QFontMetrics(battle_tag_font).height() + Offset.BATTLE_TAG_HEIGHT)
 
         details_font = QFont(self.account_details_label.font())
-        details_font.setPixelSize(Typography.DETAILS)
+        details_font.setPixelSize(Typography.HUD)
         self.account_details_label.setFont(details_font)
         self.account_details_label.setFixedHeight(QFontMetrics(details_font).height() + Offset.DETAILS_HEIGHT)
 
@@ -256,15 +283,15 @@ class ModeToggle(QWidget):
         toggle_layout = QHBoxLayout(self)
         toggle_layout.setAlignment(Qt.AlignCenter)
         toggle_layout.setContentsMargins(*Insets.NONE)
-        toggle_layout.setSpacing(Space.XXS)
+        toggle_layout.setSpacing(Space.SMALL)
 
         mode_label = QLabel(Text.MODE_LABEL)
-        mode_label.setStyleSheet(label_style(color=Palette.TEXT_PRIMARY, size=Typography.MODE_LABEL, weight=FontWeight.SEMIBOLD))
+        mode_label.setStyleSheet(label_style(color=Palette.TEXT_PRIMARY, size=Typography.HUD, weight=FontWeight.SEMIBOLD))
 
         self.enter_button = QPushButton(Text.MODE_ENTER)
         self.tab_button = QPushButton(Text.MODE_TAB)
         separator_label = QLabel(Text.MODE_SEPARATOR)
-        separator_label.setStyleSheet(label_style(color=Palette.BORDER, size=Typography.MODE_LABEL, weight=FontWeight.SEMIBOLD))
+        separator_label.setStyleSheet(label_style(color=Palette.BORDER, size=Typography.HUD, weight=FontWeight.SEMIBOLD))
 
         for mode_button in (self.enter_button, self.tab_button):
             mode_button.setFlat(True)
@@ -284,7 +311,7 @@ class ModeToggle(QWidget):
     def _stabilize_button_widths(self):
         for mode_button in (self.enter_button, self.tab_button):
             base_font = QFont(mode_button.font())
-            base_font.setPointSize(Typography.MODE_OPTION)
+            base_font.setPointSize(Typography.HUD)
             base_font.setBold(False)
 
             active_font = QFont(base_font)
@@ -292,7 +319,7 @@ class ModeToggle(QWidget):
 
             normal_width = QFontMetrics(base_font).horizontalAdvance(mode_button.text())
             active_width = QFontMetrics(active_font).horizontalAdvance(mode_button.text())
-            mode_button.setFixedWidth(max(normal_width, active_width) + Space.XS)
+            mode_button.setFixedWidth(max(normal_width, active_width) + Space.SMALL)
 
     def _handle_click(self):
         selected_mode = Mode.ENTER if self.sender() == self.enter_button else Mode.TAB
@@ -303,7 +330,7 @@ class ModeToggle(QWidget):
         active_stylesheet = style_rules(
             color=Palette.ACCENT,
             font_weight=FontWeight.BOLD,
-            font_size=Typography.MODE_OPTION,
+            font_size=Typography.HUD,
             border=Border.NONE,
             background="transparent",
             outline=Border.NONE,
@@ -311,7 +338,7 @@ class ModeToggle(QWidget):
         )
         inactive_stylesheet = style_rules(
             color=Palette.TEXT_MUTED,
-            font_size=Typography.MODE_OPTION,
+            font_size=Typography.HUD,
             border=Border.NONE,
             background="transparent",
             outline=Border.NONE,
@@ -337,7 +364,7 @@ class SwitchToggle(QAbstractButton):
         self._track_size = track_size or Size.STARTUP_SWITCH_TRACK
         self._handle_size = handle_size or Size.STARTUP_SWITCH_HANDLE
         self._handle_offset = Offset.SWITCH_HANDLE if handle_offset is None else handle_offset
-        self._track_radius = Radius.SWITCH_TRACK if track_radius is None else track_radius
+        self._track_radius = Radius.INTERACTIVE if track_radius is None else track_radius
         self.setCheckable(True)
         self.setCursor(Qt.PointingHandCursor)
         self.setFocusPolicy(Qt.NoFocus)
@@ -422,16 +449,16 @@ class StartupToggleRow(QFrame):
 
     def __init__(self, checked=False, parent=None):
         super().__init__(parent)
-        self.setStyleSheet(frame_style(Palette.SURFACE, Radius.SETTING_ROW))
+        self.setStyleSheet(frame_style(Palette.SURFACE, Radius.INTERACTIVE))
 
         row_layout = QHBoxLayout(self)
         row_layout.setContentsMargins(*Insets.SETTING_ROW)
-        row_layout.setSpacing(Space.LG)
+        row_layout.setSpacing(Space.LARGE)
 
         startup_title_label = QLabel(Text.STARTUP_ROW_TITLE)
         startup_title_label.setStyleSheet(label_style(
             color=Palette.TEXT_PRIMARY,
-            size=Typography.SETTING_TITLE,
+            size=Typography.HUD,
             weight=FontWeight.SEMIBOLD,
         ))
 

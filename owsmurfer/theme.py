@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 class Palette:
     SURFACE = "#242426"
+    SURFACE_RAISED = "#202124"
     SURFACE_INTERACTIVE = "#2b2e31"
     SURFACE_ACTIVE = "#2a2c2f"
     SURFACE_DIVIDER = "#2c2f34"
@@ -18,16 +19,8 @@ class Typography:
     WINDOW_TITLE = 14
     OVERLAY_TITLE = 12
     WINDOW_SUBTITLE = 10
-    MENU_ITEM = 10
-    ACCOUNT_BUTTON = 14
-    BATTLETAG = 17
-    DETAILS = 11
-    BUTTON = 12
-    MODE_LABEL = 9
-    MODE_OPTION = 10
-    DIALOG_TITLE = 11
-    SETTING_TITLE = 11
-    HINT = 8
+    ACTION = 11
+    HUD = 9
 
 
 class FontFamily:
@@ -35,43 +28,26 @@ class FontFamily:
 
 
 class FontWeight:
-    MEDIUM = 500
-    SEMIBOLD = 600
+    MEDIUM = 300
+    SEMIBOLD = 500
     BOLD = 700
 
 
 class Radius:
-    MENU = 10
-    MENU_ITEM = 8
-    CLOSE = 7
-    CLOSE_DOT = 8
-    INPUT = 10
+    SOFT = 10
+    SMALL = 8
     BUTTON = 15
-    BUTTON_SOFT = 16
-    ACCOUNT = 18
-    PANEL = 20
-    OVERLAY = 25
-    LIST_ITEM = 12
-    SETTING_ROW = 14
-    SWITCH_TRACK = 13
-    TRAY_SWITCH_TRACK = 10
+    CONTAINER = 20
+    INTERACTIVE = 13
 
 
 class Space:
     ZERO = 0
-    XXXS = 2
-    XXS = 3
-    XS = 4
-    SM = 7
-    MD = 8
-    LG = 10
-    XL = 12
-    XXL = 14
-    XXXL = 15
-    PANEL = 20
-    WINDOW = 22
-    OVERLAY = 30
-    SCROLLBAR = 7
+    SMALL = 4
+    MID = 8
+    LARGE = 10
+    BIG = 12
+    FRAME = 14
 
 
 class Border:
@@ -96,31 +72,31 @@ class Size:
 
 class Insets:
     NONE = (Space.ZERO, Space.ZERO, Space.ZERO, Space.ZERO)
-    MAIN_WINDOW = (Space.WINDOW, Space.WINDOW, Space.WINDOW, Space.WINDOW)
-    OVERLAY = (Space.OVERLAY, Space.OVERLAY, Space.OVERLAY, Space.OVERLAY)
-    MODAL = (Space.PANEL, Space.XXXL, Space.PANEL, Space.XXXL)
-    ACCOUNT_ITEM = (Space.LG, Space.XL, Space.LG, Space.XL)
-    SETTING_ROW = (Space.LG, Space.MD, Space.LG, Space.MD)
-    MENU = (Space.XS, Space.XS, Space.XS, Space.XS)
-    MENU_ITEM = (Space.XS, Space.LG, Space.XS, Space.LG)
-    MENU_SEPARATOR = (Space.XS, Space.LG, Space.XS, Space.LG)
-    TRAY_TOGGLE_ROW = (Space.XS, Space.LG, Space.XS, Space.SM)
+    MAIN_WINDOW = (Space.FRAME, Space.FRAME, Space.FRAME, Space.FRAME)
+    OVERLAY = (Space.FRAME, Space.FRAME, Space.FRAME, Space.FRAME)
+    MODAL = (Space.FRAME, Space.BIG, Space.FRAME, Space.BIG)
+    ACCOUNT_ITEM = (Space.LARGE, Space.BIG, Space.LARGE, Space.BIG)
+    SETTING_ROW = (Space.LARGE, Space.MID, Space.LARGE, Space.MID)
+    MENU = (Space.SMALL, Space.SMALL, Space.SMALL, Space.SMALL)
+    MENU_ITEM = (Space.SMALL, Space.LARGE, Space.SMALL, Space.LARGE)
+    MENU_SEPARATOR = (Space.SMALL, Space.LARGE, Space.SMALL, Space.LARGE)
+    TRAY_TOGGLE_ROW = (Space.SMALL, Space.LARGE, Space.SMALL, Space.MID)
 
 
 class Padding:
-    BUTTON_BASE = (Space.MD, Space.XXL)
-    BUTTON_DEFAULT = (Space.SM, 16)
-    ACCOUNT_BUTTON = (Space.MD, 18)
-    DIALOG_ACTION = (6, Space.XXL)
-    MODE_TOGGLE = (Space.ZERO, Space.XXXS)
-    BATTLE_TAG_LABEL = (Space.ZERO, Space.ZERO)
+    BUTTON_BASE = (8, 12)
+    BUTTON_DEFAULT = (8, 16)
+    ACCOUNT_BUTTON = (8, 18)
+    DIALOG_ACTION = (6, 12)
+    MODE_TOGGLE = (0, 4)
+    BATTLE_TAG_LABEL = (0, 0)
 
 
 class Offset:
     BATTLE_TAG_HEIGHT = 6
-    DETAILS_HEIGHT = Space.XXXS
-    SWITCH_HANDLE = Space.XS
-    TRAY_SWITCH_HANDLE = Space.XXS
+    DETAILS_HEIGHT = Space.SMALL
+    SWITCH_HANDLE = Space.SMALL
+    TRAY_SWITCH_HANDLE = Space.SMALL
 
 
 class Motion:
@@ -152,7 +128,7 @@ class HeaderTokens:
     SUBTITLE_COLOR = Palette.TEXT_PRIMARY
     SUBTITLE_LETTER_SPACING = 1
     CLOSE_SIZE = 16
-    CLOSE_RADIUS = Radius.CLOSE_DOT
+    CLOSE_RADIUS = Radius.SMALL
 
 
 class Headers:
@@ -228,7 +204,7 @@ def solid_border(color, width=Border.WIDTH):
     return f"{width}px solid {color}"
 
 
-def label_style(color=Palette.TEXT_PRIMARY, size=Typography.DETAILS, weight=None, letter_spacing=None):
+def label_style(color=Palette.TEXT_PRIMARY, size=Typography.HUD, weight=None, letter_spacing=None):
     return style_rules(
         color=color,
         font_size=size,
@@ -252,8 +228,8 @@ def input_style():
         background=Palette.SURFACE,
         color=Palette.TEXT_PRIMARY,
         border=solid_border(Palette.BORDER),
-        border_radius=Radius.INPUT,
-        padding=Space.MD,
+        border_radius=Radius.SOFT,
+        padding=Space.MID,
     )
 
 
@@ -276,7 +252,7 @@ def menu_style():
             background_color=Palette.SURFACE,
             color=Palette.TEXT_PRIMARY,
             border=solid_border(Palette.BORDER),
-            border_radius=Radius.MENU,
+            border_radius=Radius.SOFT,
             padding=Insets.MENU,
         ),
         qss_block(
@@ -285,7 +261,7 @@ def menu_style():
             background="transparent",
             padding=Insets.MENU_ITEM,
             margin=Space.ZERO,
-            border_radius=Radius.MENU_ITEM,
+            border_radius=Radius.SMALL,
         ),
         qss_block(
             "QMenu::item:selected",
@@ -301,8 +277,8 @@ def menu_style():
     ])
 
 
-def scrollbar_style(width=Space.SCROLLBAR):
-    handle_radius = max(Space.XXS, width // 2)
+def scrollbar_style(width=Space.MID):
+    handle_radius = max(Space.SMALL, width // 2)
     return "\n".join([
         qss_block(
             "QScrollBar:vertical",
@@ -364,9 +340,9 @@ def list_widget_style():
         qss_block("QListWidget", background="transparent", border=Border.NONE, outline=Border.NONE),
         qss_block("QAbstractScrollArea", background="transparent", border=Border.NONE, outline=Border.NONE),
         qss_block("QAbstractScrollArea::corner", background=Palette.SURFACE, border=Border.NONE),
-        qss_block("QListWidget::item", border=Border.TRANSPARENT, border_radius=Radius.LIST_ITEM, outline=Border.NONE),
-        qss_block("QListWidget::item:hover", background=Palette.SURFACE_ACTIVE, border=Border.TRANSPARENT, border_radius=Radius.LIST_ITEM),
-        qss_block("QListWidget::item:selected", background=Palette.SURFACE_INTERACTIVE, border=Border.TRANSPARENT, border_radius=Radius.LIST_ITEM),
-        qss_block("QListWidget::item:selected:hover", background=Palette.SURFACE_ACTIVE, border=Border.TRANSPARENT, border_radius=Radius.LIST_ITEM),
+        qss_block("QListWidget::item", border=Border.TRANSPARENT, border_radius=Radius.INTERACTIVE, outline=Border.NONE),
+        qss_block("QListWidget::item:hover", background=Palette.SURFACE_ACTIVE, border=Border.TRANSPARENT, border_radius=Radius.INTERACTIVE),
+        qss_block("QListWidget::item:selected", background=Palette.SURFACE_INTERACTIVE, border=Border.TRANSPARENT, border_radius=Radius.INTERACTIVE),
+        qss_block("QListWidget::item:selected:hover", background=Palette.SURFACE_ACTIVE, border=Border.TRANSPARENT, border_radius=Radius.INTERACTIVE),
         scrollbar_style(),
     ])

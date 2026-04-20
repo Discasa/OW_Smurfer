@@ -15,7 +15,7 @@ class TrayStartupRow(QWidget):
 
         row_layout = QHBoxLayout(self)
         row_layout.setContentsMargins(*Insets.TRAY_TOGGLE_ROW)
-        row_layout.setSpacing(Space.LG)
+        row_layout.setSpacing(Space.LARGE)
 
         self.startup_title_label = QLabel(Text.TRAY_STARTUP_TITLE)
         self.startup_title_label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
@@ -25,7 +25,7 @@ class TrayStartupRow(QWidget):
             track_size=Size.TRAY_SWITCH_TRACK,
             handle_size=Size.TRAY_SWITCH_HANDLE,
             handle_offset=Offset.TRAY_SWITCH_HANDLE,
-            track_radius=Radius.TRAY_SWITCH_TRACK,
+            track_radius=Radius.SOFT,
         )
         self.startup_toggle.toggled.connect(self.toggled.emit)
 
@@ -39,12 +39,12 @@ class TrayStartupRow(QWidget):
         background_color = Palette.SURFACE_INTERACTIVE if self._is_hovered and self.isEnabled() else "transparent"
         self.setStyleSheet(style_rules(
             background_color=background_color,
-            border_radius=Radius.MENU_ITEM,
+            border_radius=Radius.SMALL,
             border=Border.NONE,
         ))
         self.startup_title_label.setStyleSheet(label_style(
             color=Palette.TEXT_PRIMARY if self.isEnabled() else Palette.TEXT_HINT,
-            size=Typography.MENU_ITEM,
+            size=Typography.HUD,
             weight=FontWeight.MEDIUM,
         ))
 
