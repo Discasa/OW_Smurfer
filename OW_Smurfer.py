@@ -17,12 +17,20 @@ from PySide6.QtGui import QIcon, QPixmap, QColor, QFont, QFontMetrics
 APPDATA_PATH = os.path.join(os.getenv('LOCALAPPDATA'), 'OW_Smurfer')
 CONFIG_FILE = os.path.join(APPDATA_PATH, 'config.json')
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Ajuste o caminho da imagem se necessário
-LOGO_PATH = os.path.join(BASE_DIR, 'img', 'OW_Smurfer_logo.png')
+LOGO_PNG_PATH = os.path.join(BASE_DIR, 'img', 'OW_Smurfer_logo.png')
+ICON_ICO_PATH = os.path.join(BASE_DIR, 'img', 'OW_Smurfer_logo.ico')
 
 os.makedirs(APPDATA_PATH, exist_ok=True)
 
 DEFAULT_CONFIG = {"contas": [], "atalho": "ctrl+l", "modo": "enter"}
+
+
+def load_app_icon():
+    if os.path.exists(ICON_ICO_PATH):
+        return QIcon(ICON_ICO_PATH)
+    if os.path.exists(LOGO_PNG_PATH):
+        return QIcon(LOGO_PNG_PATH)
+    return QIcon()
 
 
 class Palette:
@@ -30,6 +38,7 @@ class Palette:
     SURFACE_BG = "#242426"
     SURFACE_BUTTON = "#202124"
     SURFACE_BUTTON_HOVER = "#2b2e31"
+    SURFACE_ITEM_HOVER = "#343940"
     SURFACE_SELECTED = "#2a2c2f"
     BORDER = "#333333"
     BORDER_SUBTLE = "#666666"
@@ -49,7 +58,7 @@ class Typography:
     OVERLAY_TITLE = 12
     WINDOW_SUBTITLE = 10
     ACCOUNT_BUTTON = 14
-    BATTLETAG = 16
+    BATTLETAG = 17
     DETAILS = 11
     BUTTON = 12
     MODE_LABEL = 9
@@ -213,8 +222,10 @@ def list_widget_style():
         qss_block("QListWidget", background="transparent", border="none", outline="none"),
         qss_block("QAbstractScrollArea", background="transparent", border="none", outline="none"),
         qss_block("QAbstractScrollArea::corner", background=Palette.PANEL_BG, border="none"),
-        qss_block("QListWidget::item", border="none", outline="none"),
-        qss_block("QListWidget::item:selected", background=Palette.SURFACE_SELECTED, border_radius=12),
+        qss_block("QListWidget::item", border="1px solid transparent", border_radius=12, outline="none"),
+        qss_block("QListWidget::item:hover", background=Palette.SURFACE_SELECTED, border="1px solid transparent", border_radius=12),
+        qss_block("QListWidget::item:selected", background=Palette.SURFACE_ITEM_HOVER, border="1px solid transparent", border_radius=12),
+        qss_block("QListWidget::item:selected:hover", background=Palette.SURFACE_SELECTED, border="1px solid transparent", border_radius=12),
         scrollbar_style(),
     ])
 
@@ -374,7 +385,7 @@ class HeaderWidget(QWidget):
         logo = QLabel()
         logo.setFixedSize(30, 30)
         logo.setStyleSheet(transparent_style())
-        pix = QPixmap(LOGO_PATH)
+        pix = QPixmap(LOGO_PNG_PATH)
         if not pix.isNull():
             if pix.width() > 4 and pix.height() > 4:
                 pix = pix.copy(1, 1, pix.width() - 2, pix.height() - 2)
@@ -413,17 +424,47 @@ class AccountItemWidget(QWidget):
         layout = QVBoxLayout(self); layout.setContentsMargins(Space.LG, Space.XL, Space.LG, Space.XL)
         layout.setSpacing(Space.XS)
         self.lbl_bnet = QLabel(bnet); self.lbl_bnet.setAlignment(Qt.AlignCenter)
-        self.lbl_details = QLabel(f"{email} | {'*' * 8}"); self.lbl_details.setAlignment(Qt.AlignCenter)
+        self.lbl_details = QLabel(email); self.lbl_details.setAlignment(Qt.AlignCenter)
+        self._apply_fonts()
         layout.addWidget(self.lbl_bnet); layout.addWidget(self.lbl_details)
         self.set_style(False)
 
+    def _apply_fonts(self):
+        bnet_font = QFont(self.lbl_bnet.font())
+        bnet_font.setPixelSize(Typography.BATTLETAG)
+        self.lbl_bnet.setFont(bnet_font)
+        self.lbl_bnet.setFixedHeight(QFontMetrics(bnet_font).height() + 6)
+
+        details_font = QFont(self.lbl_details.font())
+        details_font.setPixelSize(Typography.DETAILS)
+        self.lbl_details.setFont(details_font)
+        self.lbl_details.setFixedHeight(QFontMetrics(details_font).height() + 2)
+
+    def item_height(self):
+        margins = self.layout().contentsMargins()
+        spacing = self.layout().spacing()
+        return (
+            margins.top() +
+            self.lbl_bnet.height() +
+            spacing +
+            self.lbl_details.height() +
+            margins.bottom()
+        )
+
     def set_style(self, selected):
         if selected:
-            self.lbl_bnet.setStyleSheet(label_style(color=Palette.TEXT_PRIMARY, size=Typography.BATTLETAG, weight="bold"))
+            self.lbl_bnet.setStyleSheet(
+                label_style(color=Palette.ACCENT, size=Typography.BATTLETAG) +
+                style_rules(padding_top=0, padding_bottom=0)
+            )
             self.lbl_details.setStyleSheet(label_style(color=Palette.TEXT_PRIMARY, size=Typography.DETAILS))
-        else:
-            self.lbl_bnet.setStyleSheet(label_style(color=Palette.ACCENT, size=Typography.BATTLETAG))
-            self.lbl_details.setStyleSheet(label_style(color=Palette.TEXT_SOFT, size=Typography.DETAILS))
+            return
+
+        self.lbl_bnet.setStyleSheet(
+            label_style(color=Palette.ACCENT, size=Typography.BATTLETAG) +
+            style_rules(padding_top=0, padding_bottom=0)
+        )
+        self.lbl_details.setStyleSheet(label_style(color=Palette.TEXT_SOFT, size=Typography.DETAILS))
 
 class ModeToggle(QWidget):
     toggled = Signal(str)
@@ -584,7 +625,11 @@ class ConfigWindow(DraggableWindow):
         self.list.clear()
         for c in self.config['contas']:
             item = QListWidgetItem(); w = AccountItemWidget(c['bnet'], c['email'])
-            item.setSizeHint(w.sizeHint()); self.list.addItem(item); self.list.setItemWidget(item, w)
+            w.ensurePolished()
+            size = w.sizeHint()
+            size.setHeight(max(size.height(), w.item_height()))
+            item.setSizeHint(size)
+            self.list.addItem(item); self.list.setItemWidget(item, w)
 
     def on_sel_change(self):
         for i in range(self.list.count()):
@@ -694,7 +739,9 @@ class App:
         self.config_win = None
         self.escape_hotkey = None
 
-        self.tray = QSystemTrayIcon(QIcon(LOGO_PATH) if os.path.exists(LOGO_PATH) else QIcon())
+        app_icon = load_app_icon()
+        QApplication.instance().setWindowIcon(app_icon)
+        self.tray = QSystemTrayIcon(app_icon)
         self.tray.activated.connect(self.on_tray_activated)
         menu = QMenu(); menu.addAction("Settings", self.open_settings); menu.addAction("Exit", QApplication.quit)
         self.tray.setContextMenu(menu); self.tray.show()
