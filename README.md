@@ -4,11 +4,13 @@ A small Windows helper for quickly logging into saved Overwatch accounts.
 
 ## Features
 
-- System tray menu
+- Pill-style desktop UI
+- System tray menu with Settings and Exit
 - Quick account selector
 - Configurable login hotkey
 - Enter or Tab mode between email and password fields
 - Optional startup with Windows
+- Portable credential obfuscation in the local config file
 
 ## Requirements
 
@@ -28,4 +30,11 @@ pip install -r requirements.txt
 python OW_Smurfer.py
 ```
 
-Use the tray icon to open settings, add accounts, and change the hotkey.
+Use the tray icon to open settings, add accounts, change the hotkey, and enable startup with Windows.
+
+## Notes
+
+- The app is contained in `OW_Smurfer.py`.
+- Account credentials are stored in `%LOCALAPPDATA%\OW_Smurfer\config.json`.
+- Credentials are obfuscated to avoid plain-text reading, but this is not strong encryption.
+- `Overwatch.lnk` starts Overwatch in windowed mode.

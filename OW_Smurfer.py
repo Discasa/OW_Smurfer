@@ -16,7 +16,7 @@ except ImportError:  # pragma: no cover - non-Windows fallback
 
 import keyboard
 from PySide6.QtCore import QEasingCurve, QObject, QRectF, QSize, QSignalBlocker, Qt, QVariantAnimation, Signal
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter, QPen, QPixmap
+from PySide6.QtGui import QColor, QCursor, QFont, QFontMetrics, QIcon, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractButton,
     QAbstractItemView,
@@ -60,6 +60,7 @@ class Typography:
     WINDOW_SUBTITLE = 10
     ACCOUNT_NAME = 12
     ACCOUNT_DETAIL = 10
+    LOGIN_ACCOUNT = 14
     ACTION = 11
     HUD = 10
 
@@ -104,13 +105,13 @@ class Size:
     INPUT_DIALOG = (380, 150)
     CONFIRM_DIALOG = (380, 160)
     MODAL_CLOSE = (14, 14)
-    MAIN_ACTION_BUTTON = (140, 58)
-    HOTKEY_BUTTON = (218, 54)
-    ACCOUNT_ROW_HEIGHT = 42
+    MAIN_ACTION_BUTTON = (140, 48)
+    HOTKEY_BUTTON = (218, 46)
+    ACCOUNT_ROW_HEIGHT = 38
     LOGIN_ACCOUNT_BUTTON_HEIGHT = 64
     MODE_TOGGLE_HEIGHT = 56
-    STARTUP_ROW = (218, 54)
-    STARTUP_ROW_HEIGHT = 54
+    STARTUP_ROW = (218, 46)
+    STARTUP_ROW_HEIGHT = 46
     DIALOG_CONFIRM_BUTTON = (90, 30)
     DIALOG_PRIMARY_BUTTON = (80, 30)
     SCROLLBAR_HANDLE_MIN = 28
@@ -118,6 +119,7 @@ class Size:
     STARTUP_SWITCH_HANDLE = 18
     TRAY_SWITCH_TRACK = (36, 20)
     TRAY_SWITCH_HANDLE = 14
+    TRAY_MENU_BUTTON = (116, 38)
 
 
 class Insets:
@@ -127,8 +129,12 @@ class Insets:
     MODAL = (Space.FRAME, Space.BIG, Space.FRAME, Space.BIG)
     ACCOUNT_ITEM = (16, 8, 16, 8)
     SETTING_ROW = (8, 10, 8, 10)
+    STARTUP_ROW_CONTENT = (20, 8, 10, 8)
     MENU = (Space.SMALL, Space.SMALL, Space.SMALL, Space.SMALL)
     MENU_ITEM = (Space.SMALL, Space.LARGE, Space.SMALL, Space.LARGE)
+    MENU_PILL_ITEM = (8, 24, 8, 24)
+    MENU_PILL_MARGIN = (4, 6, 4, 6)
+    MENU_BUTTON_ROW = (6, 5, 6, 5)
     MENU_SEPARATOR = (Space.SMALL, Space.LARGE, Space.SMALL, Space.LARGE)
     TRAY_TOGGLE_ROW = (Space.SMALL, Space.LARGE, Space.SMALL, Space.MID)
 
@@ -300,23 +306,25 @@ def menu_style():
         qss_block(
             "QMenu",
             background_color=Palette.SURFACE,
-            color=Palette.TEXT_PRIMARY,
+            color=Palette.TEXT_MUTED,
             border=solid_border(Palette.BORDER),
-            border_radius=Radius.SOFT,
+            border_radius=Radius.CONTAINER,
             padding=Insets.MENU,
         ),
         qss_block(
             "QMenu::item",
-            color=Palette.TEXT_PRIMARY,
-            background="transparent",
-            padding=Insets.MENU_ITEM,
-            margin=Space.ZERO,
-            border_radius=Radius.SMALL,
+            color=Palette.TEXT_MUTED,
+            background_color=Palette.SURFACE_RAISED,
+            border=solid_border(Palette.BORDER),
+            padding=Insets.MENU_PILL_ITEM,
+            margin=Insets.MENU_PILL_MARGIN,
+            border_radius=Radius.PILL,
         ),
         qss_block(
             "QMenu::item:selected",
             background_color=Palette.SURFACE_INTERACTIVE,
             color=Palette.TEXT_PRIMARY,
+            border=solid_border(Palette.BORDER),
         ),
         qss_block(
             "QMenu::separator",
@@ -540,6 +548,15 @@ def load_app_icon():
 
 def center(widget):
     screen = QApplication.primaryScreen()
+    center_on_screen(widget, screen)
+
+
+def center_on_cursor_screen(widget):
+    screen = QApplication.screenAt(QCursor.pos()) or QApplication.primaryScreen()
+    center_on_screen(widget, screen)
+
+
+def center_on_screen(widget, screen):
     if screen is None:
         return
 
@@ -991,7 +1008,7 @@ class AccountItemWidget(QWidget):
         self.setStyleSheet(style_rules(
             background_color=background_color,
             border=Border.TRANSPARENT if not self._is_selected else f"{Border.WIDTH}px solid {border_color}",
-            border_radius=Radius.PILL,
+            border_radius=Size.ACCOUNT_ROW_HEIGHT // 2,
         ))
 
 
@@ -1003,7 +1020,7 @@ class ModeToggle(QFrame):
         self.setFixedHeight(Size.MODE_TOGGLE_HEIGHT)
         self.setStyleSheet(style_rules(
             background_color=Palette.SURFACE_RAISED,
-            border=f"{Border.WIDTH}px solid {Palette.SURFACE_DIVIDER}",
+            border=solid_border(Palette.BORDER),
             border_radius=Size.MODE_TOGGLE_HEIGHT // 2,
         ))
 
@@ -1182,7 +1199,7 @@ class StartupToggleRow(QFrame):
         self.setStyleSheet(frame_style(Palette.SURFACE_RAISED, Size.STARTUP_ROW_HEIGHT // 2))
 
         row_layout = QHBoxLayout(self)
-        row_layout.setContentsMargins(*Insets.SETTING_ROW)
+        row_layout.setContentsMargins(*Insets.STARTUP_ROW_CONTENT)
         row_layout.setSpacing(Space.LARGE)
 
         startup_title_label = QLabel(Text.STARTUP_ROW_TITLE)
@@ -1344,7 +1361,7 @@ class LoginWindow(DraggableWindow):
                 account["battle_tag"],
                 text_color=Palette.TEXT_PRIMARY,
                 radius=Size.LOGIN_ACCOUNT_BUTTON_HEIGHT // 2,
-                font_size=Typography.ACCOUNT_NAME,
+                font_size=Typography.LOGIN_ACCOUNT,
                 font_weight=FontWeight.MEDIUM,
                 padding=Padding.ACCOUNT_BUTTON,
             )
@@ -1638,16 +1655,40 @@ class TrayMenu(QObject):
 
         self.menu = QMenu()
         self.menu.setStyleSheet(menu_style())
+        self._menu_actions = []
 
-        self.startup_toggle_row = TrayStartupRow(startup_enabled, startup_supported, self.menu)
-        self.startup_toggle_action = QWidgetAction(self.menu)
-        self.startup_toggle_action.setDefaultWidget(self.startup_toggle_row)
-        self.menu.addAction(self.startup_toggle_action)
-        self.startup_toggle_row.toggled.connect(self._on_startup_toggled)
-        self.menu.addSeparator()
-        self.menu.addAction(Text.MENU_SETTINGS, self.settings_requested.emit)
-        self.menu.addAction(Text.MENU_EXIT, QApplication.quit)
+        self._add_menu_button(Text.MENU_SETTINGS, self.settings_requested.emit)
+        self._add_menu_button(Text.MENU_EXIT, QApplication.quit)
         self.tray_icon.setContextMenu(self.menu)
+
+    def _add_menu_button(self, text, callback):
+        row_widget = QWidget(self.menu)
+        row_widget.setStyleSheet(transparent_style())
+
+        row_layout = QHBoxLayout(row_widget)
+        row_layout.setContentsMargins(*Insets.MENU_BUTTON_ROW)
+        row_layout.setSpacing(Space.ZERO)
+
+        button = themed_button(
+            text,
+            radius=Size.TRAY_MENU_BUTTON[1] // 2,
+            font_size=Typography.ACTION,
+            font_weight=FontWeight.MEDIUM,
+            text_color=Palette.TEXT_MUTED,
+            hover_text_color=Palette.TEXT_PRIMARY,
+        )
+        button.setFixedSize(*Size.TRAY_MENU_BUTTON)
+        button.clicked.connect(lambda _, selected_callback=callback: self._trigger_menu_action(selected_callback))
+        row_layout.addWidget(button)
+
+        action = QWidgetAction(self.menu)
+        action.setDefaultWidget(row_widget)
+        self.menu.addAction(action)
+        self._menu_actions.append(action)
+
+    def _trigger_menu_action(self, callback):
+        self.menu.hide()
+        callback()
 
     def _on_activated(self, activation_reason):
         if activation_reason == QSystemTrayIcon.ActivationReason.DoubleClick:
@@ -1657,10 +1698,10 @@ class TrayMenu(QObject):
         self.startup_toggled.emit(enabled)
 
     def set_startup_enabled(self, enabled):
-        self.startup_toggle_row.set_checked(enabled)
+        del enabled
 
     def set_startup_supported(self, supported):
-        self.startup_toggle_row.set_supported(supported)
+        del supported
 
     def show(self):
         self.tray_icon.show()
@@ -1702,7 +1743,7 @@ class AppController:
         self.login_window.show()
         self.login_window.raise_()
         self.login_window.activateWindow()
-        center(self.login_window)
+        center_on_cursor_screen(self.login_window)
         force_window_topmost(self.login_window)
         self.enable_login_escape()
 
