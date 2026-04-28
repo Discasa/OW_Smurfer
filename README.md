@@ -2,6 +2,11 @@
 
 A small Windows helper for quickly logging into saved Overwatch accounts.
 
+<p>
+  <img src="img/Screenshot1.png" alt="OW Smurfer main window" width="49%">
+  <img src="img/Screenshot2.png" alt="OW Smurfer quick login window" width="32%">
+</p>
+
 ## Features
 
 - Pill-style desktop UI
