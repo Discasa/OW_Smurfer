@@ -535,7 +535,7 @@ ICON_ICO_PATH = IMG_DIR / "OW_Smurfer_logo.ico"
 
 APP_NAME = "OW_Smurfer"
 RUN_KEY_PATH = r"Software\Microsoft\Windows\CurrentVersion\Run"
-LAUNCHER_PATH = PROJECT_ROOT / "OW_Smurfer.py"
+LAUNCHER_PATH = Path(__file__).resolve()
 
 
 def load_app_icon():
@@ -1143,9 +1143,8 @@ class SwitchToggle(QAbstractButton):
 
     def _animate_to_state(self, checked):
         self._animation.stop()
-        self._animation.setStartValue(self._handle_position)
-        self._animation.setEndValue(self._target_offset(checked))
-        self._animation.start()
+        self._handle_position = float(self._target_offset(checked))
+        self.update()
 
     def set_checked_state(self, checked):
         with QSignalBlocker(self):

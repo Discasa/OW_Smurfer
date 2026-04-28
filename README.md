@@ -27,14 +27,14 @@ pip install -r requirements.txt
 ## Run
 
 ```powershell
-python OW_Smurfer.py
+pythonw OW_Smurfer.pyw
 ```
 
 Use the tray icon to open settings, add accounts, change the hotkey, and enable startup with Windows.
 
 ## Notes
 
-- The app is contained in `OW_Smurfer.py`.
+- The app is contained in `OW_Smurfer.pyw`.
 - Account credentials are stored in `%LOCALAPPDATA%\OW_Smurfer\config.json`.
 - Credentials are obfuscated to avoid plain-text reading, but this is not strong encryption.
-- `Overwatch.lnk` starts Overwatch in windowed mode.
+- `Overwatch.lnk` forces windowed mode with borders before starting Overwatch.
