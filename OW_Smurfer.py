@@ -1,4 +1,5 @@
 import ctypes
+import base64
 import json
 import os
 import sys
@@ -103,7 +104,7 @@ class Size:
     INPUT_DIALOG = (380, 150)
     CONFIRM_DIALOG = (380, 160)
     MODAL_CLOSE = (14, 14)
-    MAIN_ACTION_BUTTON = (128, 58)
+    MAIN_ACTION_BUTTON = (140, 58)
     HOTKEY_BUTTON = (218, 54)
     ACCOUNT_ROW_HEIGHT = 42
     LOGIN_ACCOUNT_BUTTON_HEIGHT = 64
@@ -206,7 +207,7 @@ class Text:
     MODE_SEPARATOR = "|"
     MODE_ENTER = "ENTER"
     MODE_TAB = "TAB"
-    STARTUP_ROW_TITLE = "START WITH WINDOWS"
+    STARTUP_ROW_TITLE = "START WITH PC"
     TRAY_STARTUP_TITLE = "Start With Windows"
     MENU_SETTINGS = "Settings"
     MENU_EXIT = "Exit"
@@ -403,6 +404,9 @@ APPDATA_PATH = Path(LOCAL_APPDATA) / "OW_Smurfer" if LOCAL_APPDATA else Path.hom
 CONFIG_FILE = APPDATA_PATH / "config.json"
 DEFAULT_CONFIG = {"accounts": [], "hotkey": "ctrl+l", "mode": Mode.ENTER}
 VALID_MODES = {Mode.ENTER, Mode.TAB}
+ACCOUNTS_DATA_KEY = "accounts_data"
+OBFUSCATION_PREFIX = "ow1:"
+OBFUSCATION_KEY = b"OW_Smurfer portable config"
 
 APPDATA_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -429,6 +433,49 @@ def normalize_account(raw_account):
     }
 
 
+def normalized_accounts(raw_accounts):
+    if not isinstance(raw_accounts, list):
+        return []
+
+    return [
+        normalized_account
+        for account in raw_accounts
+        for normalized_account in [normalize_account(account)]
+        if normalized_account is not None
+    ]
+
+
+def xor_bytes(data):
+    return bytes(
+        byte ^ OBFUSCATION_KEY[index % len(OBFUSCATION_KEY)]
+        for index, byte in enumerate(data)
+    )
+
+
+def encode_accounts(accounts):
+    payload = json.dumps(
+        normalized_accounts(accounts),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    encoded_payload = base64.urlsafe_b64encode(xor_bytes(payload)).decode("ascii")
+    return f"{OBFUSCATION_PREFIX}{encoded_payload}"
+
+
+def decode_accounts(encoded_accounts):
+    if not isinstance(encoded_accounts, str) or not encoded_accounts.startswith(OBFUSCATION_PREFIX):
+        return []
+
+    try:
+        encoded_payload = encoded_accounts[len(OBFUSCATION_PREFIX):].encode("ascii")
+        payload = xor_bytes(base64.urlsafe_b64decode(encoded_payload))
+        decoded_accounts = json.loads(payload.decode("utf-8"))
+    except (OSError, ValueError, TypeError, json.JSONDecodeError, UnicodeDecodeError):
+        return []
+
+    return normalized_accounts(decoded_accounts)
+
+
 def load_config():
     if not CONFIG_FILE.exists():
         return default_config()
@@ -442,29 +489,33 @@ def load_config():
         return default_config()
 
     validated_config = default_config()
-    validated_config["accounts"] = raw_config.get("accounts", DEFAULT_CONFIG["accounts"])
+    if ACCOUNTS_DATA_KEY in raw_config:
+        validated_config["accounts"] = decode_accounts(raw_config.get(ACCOUNTS_DATA_KEY))
+    else:
+        validated_config["accounts"] = raw_config.get("accounts", DEFAULT_CONFIG["accounts"])
     validated_config["hotkey"] = raw_config.get("hotkey", DEFAULT_CONFIG["hotkey"])
     validated_config["mode"] = raw_config.get("mode", DEFAULT_CONFIG["mode"])
 
-    if not isinstance(validated_config["accounts"], list):
-        validated_config["accounts"] = []
-    validated_config["accounts"] = [
-        normalized_account
-        for account in validated_config["accounts"]
-        for normalized_account in [normalize_account(account)]
-        if normalized_account is not None
-    ]
+    validated_config["accounts"] = normalized_accounts(validated_config["accounts"])
 
     if not isinstance(validated_config["hotkey"], str) or not validated_config["hotkey"].strip():
         validated_config["hotkey"] = DEFAULT_CONFIG["hotkey"]
     if validated_config["mode"] not in VALID_MODES:
         validated_config["mode"] = DEFAULT_CONFIG["mode"]
 
+    if ACCOUNTS_DATA_KEY not in raw_config:
+        save_config(validated_config)
+
     return validated_config
 
 
 def save_config(config_data):
-    CONFIG_FILE.write_text(json.dumps(config_data, indent=4), encoding="utf-8")
+    stored_config = {
+        "hotkey": config_data.get("hotkey", DEFAULT_CONFIG["hotkey"]),
+        "mode": config_data.get("mode", DEFAULT_CONFIG["mode"]),
+        ACCOUNTS_DATA_KEY: encode_accounts(config_data.get("accounts", [])),
+    }
+    CONFIG_FILE.write_text(json.dumps(stored_config, indent=4), encoding="utf-8")
 
 
 # ---- core.py ----
@@ -1136,9 +1187,9 @@ class StartupToggleRow(QFrame):
 
         startup_title_label = QLabel(Text.STARTUP_ROW_TITLE)
         startup_title_label.setStyleSheet(label_style(
-            color=Palette.TEXT_PRIMARY,
-            size=Typography.HUD,
-            weight=FontWeight.SEMIBOLD,
+            color=Palette.TEXT_MUTED,
+            size=Typography.ACTION,
+            weight=FontWeight.MEDIUM,
         ))
 
         self.switch_toggle = SwitchToggle(checked)
@@ -1349,7 +1400,7 @@ class MainWindow(DraggableWindow):
         content_layout.addWidget(self.account_list, 1)
 
         action_button_layout = QHBoxLayout()
-        action_button_layout.setSpacing(28)
+        action_button_layout.setSpacing(10)
         for text, callback in [
             (Text.MAIN_WINDOW_ADD, self.add_account),
             (Text.MAIN_WINDOW_EDIT, self.edit_account),
