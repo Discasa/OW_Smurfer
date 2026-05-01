@@ -62,6 +62,7 @@ python -m py_compile .\OW_Smurfer.pyw
 
 - Keep account-storage warnings visible in `README.md`.
 - Keep screenshots in `img` current when the UI changes.
+- Keep source logos and icons in `img`.
 - Keep image-related helper scripts in `img/scripts`.
 - Keep `requirements.txt` minimal and aligned with imports.
 - Test tray startup, hotkey behavior, and login typing on Windows after changes.

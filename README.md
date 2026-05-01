@@ -48,6 +48,10 @@ Use the tray icon to open settings, add accounts, change the hotkey, and enable 
 
 See [documentation.md](documentation.md) for repository layout, runtime data, workflow, and maintenance notes.
 
+## Asset Layout
+
+Image assets live under `img`. Image-related helper scripts live under `img/scripts`.
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for project history.
