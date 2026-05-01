@@ -43,3 +43,11 @@ Use the tray icon to open settings, add accounts, change the hotkey, and enable 
 - Account credentials are stored in `%LOCALAPPDATA%\OW_Smurfer\config.json`.
 - Credentials are obfuscated to avoid plain-text reading, but this is not strong encryption.
 - `Overwatch.lnk` forces windowed mode with borders before starting Overwatch.
+
+## Documentation
+
+See [documentation.md](documentation.md) for repository layout, runtime data, workflow, and maintenance notes.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for project history.
