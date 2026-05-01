@@ -13,6 +13,7 @@ DEFAULT_ICON_SIZES = (16, 20, 24, 32, 40, 48, 64, 72, 96, 128, 256)
 
 def parse_args() -> argparse.Namespace:
     script_dir = Path(__file__).resolve().parent
+    img_dir = script_dir.parent
 
     parser = argparse.ArgumentParser(
         description="Create a Windows .ico file with multiple embedded sizes."
@@ -20,13 +21,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--source",
         type=Path,
-        default=script_dir / "OW_Smurfer_logo.png",
+        default=img_dir / "OW_Smurfer_logo.png",
         help="Source PNG file.",
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=script_dir / "OW_Smurfer_logo.ico",
+        default=img_dir / "OW_Smurfer_logo.ico",
         help="Output ICO file.",
     )
     parser.add_argument(

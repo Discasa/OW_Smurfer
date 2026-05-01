@@ -13,6 +13,7 @@ OW_Smurfer
   OW_Smurfer.pyw     Main PySide6 application entrypoint
   Overwatch.lnk      Shortcut used to start Overwatch in windowed mode
   img                UI screenshots, logo, and icon assets
+  img/scripts        Image-related helper scripts
   requirements.txt   Python dependencies
   README.md          User-facing overview
   documentation.md   Technical and maintenance notes
@@ -61,5 +62,6 @@ python -m py_compile .\OW_Smurfer.pyw
 
 - Keep account-storage warnings visible in `README.md`.
 - Keep screenshots in `img` current when the UI changes.
+- Keep image-related helper scripts in `img/scripts`.
 - Keep `requirements.txt` minimal and aligned with imports.
 - Test tray startup, hotkey behavior, and login typing on Windows after changes.

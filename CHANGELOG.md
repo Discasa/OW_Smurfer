@@ -2,6 +2,13 @@
 
 All notable changes to **OW Smurfer** are documented in this file.
 
+## [2026-05-01-assets]
+
+### Changed
+
+- Moved the icon-generation helper script into `img/scripts`.
+- Updated documentation for the standardized image script location.
+
 ## [2026-05-01]
 
 ### Added
