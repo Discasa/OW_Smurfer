@@ -55,3 +55,7 @@ Image assets live under `img`. Image-related helper scripts live under `img/scri
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for project history.
+
+## License
+
+This repository is licensed under the MIT License. See [LICENSE](LICENSE).

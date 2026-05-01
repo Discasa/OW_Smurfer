@@ -66,3 +66,7 @@ python -m py_compile .\OW_Smurfer.pyw
 - Keep image-related helper scripts in `img/scripts`.
 - Keep `requirements.txt` minimal and aligned with imports.
 - Test tray startup, hotkey behavior, and login typing on Windows after changes.
+
+## 7. License
+
+OW Smurfer is distributed under the MIT License. See `LICENSE` for the full text.
